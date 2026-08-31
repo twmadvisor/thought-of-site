@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Thought Of Login Test</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#fff; color:#111; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:28px; }
+    main { width:100%; max-width:420px; }
+    .brand { text-align:center; font-size:38px; font-weight:300; letter-spacing:-1.5px; margin-bottom:8px; }
+    .tag { text-align:center; color:#666; line-height:1.4; margin:0 0 40px; }
+    h1 { font-size:22px; font-weight:500; margin:0 0 12px; }
+    input { width:100%; font:inherit; font-size:18px; padding:15px; border:1px solid #ccc; border-radius:14px; outline:none; }
+    input:focus { border-color:#111; }
+    button { width:100%; border:0; border-radius:14px; padding:15px; margin-top:14px; background:#111; color:#fff; font:inherit; font-weight:600; font-size:16px; }
+    button:disabled { opacity:.45; }
+    .note, .small, .message { color:#666; text-align:center; line-height:1.4; font-size:14px; margin-top:14px; }
+    .small { text-align:left; margin:0 0 10px; }
+    .message.error { color:#a00; }
+    .link { background:none; color:#111; padding:6px; text-decoration:underline; font-weight:400; }
+    .success { text-align:center; font-size:48px; margin-bottom:10px; }
+    .center { text-align:center; }
+    [hidden] { display:none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">thought of</div>
+  <p class="tag">For the people you think about between conversations.</p>
+
+  <section id="phoneStep">
+    <h1>Your phone number</h1>
+    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 512 555 1234" />
+    <button id="sendBtn">Send code</button>
+    <p class="note">Use the phone number you added under Supabase Test Phone Numbers and OTPs. No real SMS should be sent.</p>
+  </section>
+
+  <section id="codeStep" hidden>
+    <h1>Enter your code</h1>
+    <p class="small" id="testingNumber"></p>
+    <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit test code" />
+    <button id="verifyBtn">Continue</button>
+    <button id="differentBtn" class="link">Use a different number</button>
+  </section>
+
+  <section id="successStep" hidden>
+    <div class="success">✓</div>
+    <h1 class="center">You’re in.</h1>
+    <p class="note">Supabase phone authentication is working.</p>
+  </section>
+
+  <p id="message" class="message" hidden></p>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://dlaxhooizwxitjxcjyyf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_cnNOjkZ1yi5uAPdFv8SDJQ_i_HwSAbA';
+
+const phoneStep = document.getElementById('phoneStep');
+const codeStep = document.getElementById('codeStep');
+const successStep = document.getElementById('successStep');
+const phoneInput = document.getElementById('phone');
+const codeInput = document.getElementById('code');
+const sendBtn = document.getElementById('sendBtn');
+const verifyBtn = document.getElementById('verifyBtn');
+const differentBtn = document.getElementById('differentBtn');
+const testingNumber = document.getElementById('testingNumber');
+const message = document.getElementById('message');
+let normalizedPhone = '';
+
+function normalizePhone(input) {
+  const t = input.trim();
+  const digits = t.replace(/\D/g, '');
+  if (t.startsWith('+')) return '+' + digits;
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+  return t;
+}
+
+function showMessage(text, isError = false) {
+  message.textContent = text;
+  message.className = 'message' + (isError ? ' error' : '');
+  message.hidden = !text;
+}
+
+async function post(path, body) {
+  const res = await fetch(SUPABASE_URL + path, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  let data = {};
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(data.msg || data.message || data.error_description || ('Request failed (' + res.status + ')'));
+  return data;
+}
+
+sendBtn.addEventListener('click', async () => {
+  normalizedPhone = normalizePhone(phoneInput.value);
+  if (!normalizedPhone) return;
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Sending…';
+  showMessage('');
+  try {
+    await post('/auth/v1/otp', { phone: normalizedPhone });
+    phoneStep.hidden = true;
+    codeStep.hidden = false;
+    testingNumber.textContent = 'Testing ' + normalizedPhone;
+    codeInput.focus();
+  } catch (e) {
+    showMessage(e.message, true);
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send code';
+  }
+});
+
+verifyBtn.addEventListener('click', async () => {
+  const code = codeInput.value.trim();
+  if (code.length !== 6) { showMessage('Enter the 6-digit test code.', true); return; }
+  verifyBtn.disabled = true;
+  verifyBtn.textContent = 'Checking…';
+  showMessage('');
+  try {
+    const data = await post('/auth/v1/verify', { type: 'sms', phone: normalizedPhone, token: code });
+    if (!data.access_token) throw new Error('Code was accepted, but no session was returned.');
+    codeStep.hidden = true;
+    successStep.hidden = false;
+  } catch (e) {
+    showMessage(e.message, true);
+  } finally {
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Continue';
+  }
+});
+
+differentBtn.addEventListener('click', () => {
+  codeStep.hidden = true;
+  phoneStep.hidden = false;
+  codeInput.value = '';
+  showMessage('');
+});
+</script>
+</body>
+</html>
