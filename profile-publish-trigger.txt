@@ -1,0 +1,1 @@
+Trigger GitHub Pages publish for Thought Of profile-photo test.
