@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Thought Of Organic Bubble Test</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#fff}
+iframe{border:0;width:100%;height:100%;display:block}
+</style>
+</head>
+<body>
+<iframe id="app" src="thought-test.html" title="Thought Of"></iframe>
+<script>
+const frame=document.getElementById('app');
+
+function hashString(s){
+  let h=2166136261;
+  for(let i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);
+    h=Math.imul(h,16777619);
+  }
+  return h>>>0;
+}
+function range(seed,shift,min,max){
+  const n=((seed>>>shift)&255)/255;
+  return Math.round(min+n*(max-min));
+}
+function shapeFor(id){
+  const h=hashString(String(id||''));
+  return {
+    a:range(h,0,36,55), b:range(h,4,45,64), c:range(h,8,38,58), d:range(h,12,43,63),
+    e:range(h,2,45,64), f:range(h,6,38,57), g:range(h,10,44,65), k:range(h,14,37,56),
+    tail1:range(h,16,5,18), tail2:range(h,20,0,10),
+    s1:range(h,5,7,10), s2:range(h,11,3,6)
+  };
+}
+function applyShape(row,bubble,id){
+  if(!bubble)return;
+  const s=shapeFor(id);
+  bubble.style.borderRadius=`${s.a}% ${s.b}% ${s.c}% ${s.d}% / ${s.e}% ${s.f}% ${s.g}% ${s.k}%`;
+  bubble.style.setProperty('--tail1',s.tail1+'px');
+  bubble.style.setProperty('--tail2',s.tail2+'px');
+  bubble.style.setProperty('--tail1size',s.s1+'px');
+  bubble.style.setProperty('--tail2size',s.s2+'px');
+  row.dataset.organic='1';
+}
+
+frame.addEventListener('load',()=>{
+  const w=frame.contentWindow, d=frame.contentDocument;
+  const style=d.createElement('style');
+  style.textContent=`
+    .bubble{transition:border-radius .18s ease;min-width:54px}
+    .thought-row.mine .bubble::before{width:var(--tail1size,8px)!important;height:var(--tail1size,8px)!important;right:var(--tail1,10px)!important}
+    .thought-row.mine .bubble::after{width:var(--tail2size,4px)!important;height:var(--tail2size,4px)!important;right:var(--tail2,4px)!important}
+    .thought-row.theirs .bubble::before{width:var(--tail1size,8px)!important;height:var(--tail1size,8px)!important;left:var(--tail1,10px)!important}
+    .thought-row.theirs .bubble::after{width:var(--tail2size,4px)!important;height:var(--tail2size,4px)!important;left:var(--tail2,4px)!important}
+  `;
+  d.head.appendChild(style);
+
+  const original=w.renderThought;
+  if(typeof original==='function'){
+    w.renderThought=function(t){
+      const list=d.getElementById('thoughtList');
+      const before=list?list.children.length:0;
+      const result=original.call(this,t);
+      const rows=list?list.querySelectorAll('.thought-row'):[];
+      const row=rows[rows.length-1];
+      if(row)applyShape(row,row.querySelector('.bubble'),t&&t.id);
+      return result;
+    };
+  }
+
+  // Fallback for any Thoughts already rendered before the patch attached.
+  function decorateExisting(){
+    const rows=[...d.querySelectorAll('.thought-row')];
+    rows.forEach((row,i)=>{
+      if(row.dataset.organic)return;
+      const bubble=row.querySelector('.bubble');
+      const seed=(bubble?.textContent||'')+'|'+i;
+      applyShape(row,bubble,seed);
+    });
+  }
+  new MutationObserver(decorateExisting).observe(d.body,{childList:true,subtree:true});
+  decorateExisting();
+});
+</script>
+</body>
+</html>
