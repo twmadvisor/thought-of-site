@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'
 import { ArchivedPerson, deleteMyArchive, loadArchivedPeople, requestReconnect, setPersonBlocked } from '../api/relationships'
 import { Center } from '../components/Common'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 function dateLabel(value: string) {
@@ -13,19 +14,20 @@ export function ArchivesScreen({ onBack, onViewHistory }: { onBack: () => void; 
   const [loading, setLoading] = useState(true)
   const [requested, setRequested] = useState<Set<string>>(new Set())
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const refresh = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try { setRows(await loadArchivedPeople()) }
     catch (e: any) { Alert.alert('Could not load archives', e.message) }
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  useForegroundRefresh(() => refresh(false))
+  useEffect(() => { void refresh(true) }, [refresh])
 
   function deleteArchive(item: ArchivedPerson) {
     Alert.alert(`Delete your archive with ${item.person_name}?`, 'This deletes only your copy. It cannot be undone, and the other person’s archive is unaffected.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete archive', style: 'destructive', onPress: async () => { try { await deleteMyArchive(item.connection_id); await refresh() } catch (e: any) { Alert.alert('Could not delete archive', e.message) } } },
+      { text: 'Delete archive', style: 'destructive', onPress: async () => { try { await deleteMyArchive(item.connection_id); await refresh(false) } catch (e: any) { Alert.alert('Could not delete archive', e.message) } } },
     ])
   }
 
@@ -43,7 +45,7 @@ export function ArchivesScreen({ onBack, onViewHistory }: { onBack: () => void; 
             <View style={styles.archiveActions}>
               {item.history_available && <Pressable style={styles.pill} onPress={() => onViewHistory(item)}><Text>View history</Text></Pressable>}
               {!item.blocked_by_me && <Pressable style={styles.pill} disabled={requested.has(item.connection_id)} onPress={async () => { try { await requestReconnect(item.connection_id); setRequested((old) => new Set(old).add(item.connection_id)) } catch (e: any) { Alert.alert('Could not reconnect', e.message) } }}><Text>{requested.has(item.connection_id) ? 'Request sent' : 'Reconnect'}</Text></Pressable>}
-              <Pressable style={styles.pill} onPress={async () => { try { await setPersonBlocked(item.connection_id, !item.blocked_by_me); await refresh() } catch (e: any) { Alert.alert('Could not update block', e.message) } }}><Text>{item.blocked_by_me ? 'Unblock' : 'Block'}</Text></Pressable>
+              <Pressable style={styles.pill} onPress={async () => { try { await setPersonBlocked(item.connection_id, !item.blocked_by_me); await refresh(false) } catch (e: any) { Alert.alert('Could not update block', e.message) } }}><Text>{item.blocked_by_me ? 'Unblock' : 'Block'}</Text></Pressable>
               <Pressable style={styles.dangerPill} onPress={() => deleteArchive(item)}><Text style={styles.dangerText}>Delete archive</Text></Pressable>
             </View>
           </View>
