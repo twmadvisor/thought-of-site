@@ -31,9 +31,9 @@ jobs:
         run: cd ios && pod install
       - name: Compile unsigned iOS Simulator release
         run: |
-          WORKSPACE=$(find ios -maxdepth 2 -name '*.xcworkspace' | head -1)
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' | head -1)
           if [ -z "$WORKSPACE" ]; then
-            echo "No Xcode workspace generated."
+            echo "No CocoaPods Xcode workspace generated."
             exit 1
           fi
           SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["workspace"]["schemes"][0])')
