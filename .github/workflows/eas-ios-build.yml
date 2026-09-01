@@ -2,6 +2,11 @@ name: Build native iOS app
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - native-app
+    paths:
+      - native/eas-ios-build-trigger.txt
 
 jobs:
   build:
@@ -10,15 +15,15 @@ jobs:
       run:
         working-directory: native
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: native-app
       - name: Require Expo token
         run: |
           if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
             echo "Add the EXPO_TOKEN repository secret first."
             exit 1
           fi
-      - uses: actions/checkout@v5
-        with:
-          ref: native-app
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -29,5 +34,5 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Queue iOS production build
-        run: eas build --platform ios --profile production --non-interactive --no-wait
+      - name: Build iOS production app
+        run: eas build --platform ios --profile production --non-interactive --wait
