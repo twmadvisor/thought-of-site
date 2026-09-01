@@ -1,0 +1,1 @@
+Trigger EAS project bootstrap after EXPO_TOKEN setup.
