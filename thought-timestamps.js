@@ -16,10 +16,10 @@ function start(){
   const w=findApp();
   if(!w){setTimeout(start,400);return}
   const d=w.document;
-  if(d.getElementById('thoughtTimestampStyles2'))return;
+  if(d.getElementById('thoughtTimestampBridge3'))return;
 
   const css=d.createElement('style');
-  css.id='thoughtTimestampStyles2';
+  css.id='thoughtTimestampStyles3';
   css.textContent=`
     .thought-time{font-size:11px;line-height:1.2;color:#999;opacity:0;max-height:0;overflow:hidden;margin-top:0;transition:opacity .14s ease,max-height .14s ease,margin-top .14s ease;pointer-events:none;white-space:nowrap}
     .thought-time.shown{opacity:1;max-height:18px;margin-top:8px}
@@ -27,64 +27,72 @@ function start(){
   `;
   d.head.appendChild(css);
 
-  const timers={};
-  function format(value){
-    const dt=new Date(value),now=new Date();
-    const sameDay=dt.getFullYear()===now.getFullYear()&&dt.getMonth()===now.getMonth()&&dt.getDate()===now.getDate();
-    const time=dt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-    if(sameDay)return time;
-    const sameYear=dt.getFullYear()===now.getFullYear();
-    const date=dt.toLocaleDateString([],sameYear?{month:'short',day:'numeric'}:{month:'short',day:'numeric',year:'numeric'});
-    return date+', '+time;
-  }
+  const s=d.createElement('script');
+  s.id='thoughtTimestampBridge3';
+  s.textContent=`
+    const thoughtTimestampTimers3={};
+    let thoughtTimestampCache3={connectionId:null,items:[],loadedAt:0};
 
-  let syncing=false,lastKey='';
-  async function sync(){
-    if(syncing)return;
-    const list=d.getElementById('thoughtList');
-    const history=d.getElementById('history');
-    const c=w.currentConnection;
-    if(!list||!history||history.hidden||!c?.id)return;
-    const rows=[...list.querySelectorAll('.thought-row')];
-    if(!rows.length)return;
-    syncing=true;
-    try{
-      const ts=await w.api('/rest/v1/thoughts?connection_id=eq.'+c.id+'&select=id,created_at&order=created_at.asc');
-      const key=c.id+'|'+ts.map(x=>x.id).join(',')+'|'+rows.length;
-      if(key===lastKey && rows.every(r=>r.querySelector('.thought-time')))return;
-      lastKey=key;
-      rows.forEach((row,i)=>{
-        const t=ts[i];
-        if(!t)return;
-        let stamp=row.querySelector('.thought-time');
-        if(!stamp){
-          stamp=d.createElement('div');
-          stamp.className='thought-time';
-          const bubble=row.querySelector('.bubble');
-          if(bubble)bubble.after(stamp); else row.appendChild(stamp);
-        }
-        stamp.dataset.thoughtId=t.id;
-        stamp.textContent=format(t.created_at);
-      });
-    }catch(e){}finally{syncing=false}
-  }
+    function formatThoughtTimestamp3(value){
+      const dt=new Date(value),now=new Date();
+      const sameDay=dt.getFullYear()===now.getFullYear()&&dt.getMonth()===now.getMonth()&&dt.getDate()===now.getDate();
+      const time=dt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+      if(sameDay)return time;
+      const sameYear=dt.getFullYear()===now.getFullYear();
+      const date=dt.toLocaleDateString([],sameYear?{month:'short',day:'numeric'}:{month:'short',day:'numeric',year:'numeric'});
+      return date+', '+time;
+    }
 
-  d.addEventListener('click',e=>{
-    const bubble=e.target.closest?.('.bubble');
-    if(!bubble)return;
-    const row=bubble.closest('.thought-row');
-    const stamp=row?.querySelector('.thought-time');
-    if(!stamp)return;
-    stamp.classList.add('shown');
-    const id=stamp.dataset.thoughtId||Math.random();
-    if(timers[id])clearTimeout(timers[id]);
-    timers[id]=setTimeout(()=>{stamp.classList.remove('shown');delete timers[id]},3000);
-  },true);
+    async function getThoughtTimestampItems3(){
+      if(!currentConnection?.id)return [];
+      const id=currentConnection.id;
+      if(thoughtTimestampCache3.connectionId===id && Date.now()-thoughtTimestampCache3.loadedAt<1500)return thoughtTimestampCache3.items;
+      const items=await api('/rest/v1/thoughts?connection_id=eq.'+id+'&select=id,created_at&order=created_at.asc');
+      thoughtTimestampCache3={connectionId:id,items,loadedAt:Date.now()};
+      return items;
+    }
 
-  const list=d.getElementById('thoughtList');
-  if(list)new MutationObserver(()=>setTimeout(sync,0)).observe(list,{childList:true,subtree:true});
-  setInterval(sync,700);
-  setTimeout(sync,100);
+    async function ensureThoughtTimestamp3(row){
+      if(!row)return null;
+      let stamp=row.querySelector('.thought-time');
+      if(stamp)return stamp;
+      const list=document.getElementById('thoughtList');
+      const rows=[...list.querySelectorAll('.thought-row')];
+      const index=rows.indexOf(row);
+      if(index<0)return null;
+      const items=await getThoughtTimestampItems3();
+      const t=items[index];
+      if(!t)return null;
+      stamp=document.createElement('div');
+      stamp.className='thought-time';
+      stamp.dataset.thoughtId=t.id;
+      stamp.textContent=formatThoughtTimestamp3(t.created_at);
+      const bubble=row.querySelector('.bubble');
+      if(bubble)bubble.after(stamp);else row.appendChild(stamp);
+      return stamp;
+    }
+
+    document.addEventListener('click',async e=>{
+      const bubble=e.target.closest?.('.bubble');
+      if(!bubble)return;
+      const row=bubble.closest('.thought-row');
+      try{
+        const stamp=await ensureThoughtTimestamp3(row);
+        if(!stamp)return;
+        stamp.classList.add('shown');
+        const id=stamp.dataset.thoughtId||'x';
+        if(thoughtTimestampTimers3[id])clearTimeout(thoughtTimestampTimers3[id]);
+        thoughtTimestampTimers3[id]=setTimeout(()=>{stamp.classList.remove('shown');delete thoughtTimestampTimers3[id]},3000);
+      }catch(err){}
+    },true);
+
+    document.addEventListener('mouseover',e=>{
+      const bubble=e.target.closest?.('.bubble');
+      if(!bubble)return;
+      ensureThoughtTimestamp3(bubble.closest('.thought-row')).catch(()=>{});
+    },true);
+  `;
+  d.body.appendChild(s);
 }
 host.addEventListener('load',()=>setTimeout(start,900));
 setTimeout(start,900);
