@@ -2,6 +2,11 @@ name: Bootstrap EAS project
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - native-app
+    paths:
+      - native/eas-bootstrap-trigger.txt
 
 permissions:
   contents: write
