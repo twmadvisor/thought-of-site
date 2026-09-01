@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Thought Of Emoji Reactions</title><style>html,body{margin:0;min-height:100%;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#loading{padding:40px;text-align:center;color:#777}</style></head><body><div id="loading">Loading Thought Of…</div><script>
+(async()=>{try{let t=await fetch('thought-profile-ios4.html?v=emoji1-'+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Could not load app');return r.text()});
+t=t.replace("['❤️','👍','😂','😮','😢','🙌']","['😌','🥰','❤️','👀','👋','👍']");
+const old="p.appendChild(bt)});let strip=row.querySelector('.reaction-strip');";
+const neu="p.appendChild(bt)});let more=document.createElement('button');more.type='button';more.textContent='＋';more.setAttribute('aria-label','More emoji');more.onclick=e=>{e.stopPropagation();let raw=prompt('Choose any emoji from your keyboard');if(!raw)return;let em=raw.trim();if(!em)return;try{if(typeof Intl!=='undefined'&&Intl.Segmenter){let parts=[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(em)];em=parts[0]?.segment||''}}catch(x){}if(em)setReaction(t.id,em)};p.appendChild(more);let strip=row.querySelector('.reaction-strip');";
+if(!t.includes(old))throw Error('Emoji patch did not match current reactions build');t=t.replace(old,neu);
+document.open();document.write(t);document.close()}catch(e){document.getElementById('loading').textContent=e.message}})();
+</script></body></html>
