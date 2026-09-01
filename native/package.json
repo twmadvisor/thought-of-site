@@ -14,12 +14,12 @@
     "expo": "~57.0.9",
     "expo-constants": "~57.0.8",
     "expo-device": "~57.0.1",
+    "expo-image-picker": "~57.0.7",
     "expo-notifications": "~57.0.8",
     "expo-sqlite": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.87.0",
-    "react-native-url-polyfill": "^2.0.0",
-    "expo-image-picker": "~57.0.7"
+    "react-native": "0.86.3",
+    "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

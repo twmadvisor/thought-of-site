@@ -4,11 +4,11 @@
     "slug": "thought-of",
     "version": "0.3.0",
     "orientation": "portrait",
-    "icon": "./assets/thought-of-logo-1024.png",
+    "icon": "./assets/thought-of-logo-locked-256.png",
     "userInterfaceStyle": "light",
     "scheme": "thoughtof",
     "splash": {
-      "image": "./assets/thought-of-logo-1024.png",
+      "image": "./assets/thought-of-logo-locked-256.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,9 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.thoughtof.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -26,12 +24,7 @@
     },
     "plugins": [
       "expo-notifications",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow thought of to choose a profile photo."
-        }
-      ]
+      ["expo-image-picker", { "photosPermission": "Allow thought of to choose a profile photo." }]
     ]
   }
 }
