@@ -4,7 +4,6 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "postinstall": "node scripts/prepare-assets.cjs",
     "start": "expo start",
     "ios": "expo start --ios",
     "android": "expo start --android",
@@ -24,7 +23,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "sharp": "^0.34.4",
     "typescript": "~6.0.3"
   }
 }
