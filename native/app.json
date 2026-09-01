@@ -4,6 +4,7 @@
     "slug": "thought-of",
     "version": "0.3.0",
     "orientation": "portrait",
+    "icon": "./assets/thought-of-icon-source.png",
     "userInterfaceStyle": "light",
     "scheme": "thoughtof",
     "ios": {
