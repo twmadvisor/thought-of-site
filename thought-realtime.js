@@ -4,55 +4,65 @@ function findApp(){try{let w=host.contentWindow;for(let i=0;i<16;i++){if(w?.docu
 function start(){
   const w=findApp();if(!w){setTimeout(start,500);return}
   const d=w.document;if(d.getElementById('thoughtRealtimeBridge'))return;
-  const s=d.createElement('script');s.id='thoughtRealtimeBridge';s.type='module';s.textContent=`
-  let thoughtRealtimeClient=null,thoughtRealtimeChannel=null,thoughtRealtimeConnectionId=null,thoughtRealtimeTimer=null,thoughtRealtimeRefreshing=false;
-  async function thoughtRealtimeInit(){
-    if(!thoughtRealtimeClient){
-      const mod=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-      thoughtRealtimeClient=mod.createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  const s=d.createElement('script');s.id='thoughtRealtimeBridge';s.textContent=`
+  let thoughtLiveTimer=null,thoughtLiveConnectionId=null,thoughtLiveSignature=null,thoughtLiveBusy=false;
+
+  function stopThoughtLive(){
+    if(thoughtLiveTimer){clearInterval(thoughtLiveTimer);thoughtLiveTimer=null}
+    thoughtLiveConnectionId=null;thoughtLiveSignature=null;thoughtLiveBusy=false;
+  }
+
+  async function thoughtLiveSnapshot(connectionId){
+    const thoughts=await api('/rest/v1/thoughts?connection_id=eq.'+connectionId+'&select=id,sender_id,body,created_at&order=created_at.asc');
+    let reactions=[];
+    if(thoughts.length){
+      const ids=thoughts.map(t=>t.id).join(',');
+      try{reactions=await api('/rest/v1/reactions?thought_id=in.('+ids+')&select=thought_id,user_id,emoji&order=thought_id.asc,user_id.asc')}catch(e){}
     }
-    thoughtRealtimeClient.realtime.setAuth(token);
+    return JSON.stringify({thoughts,reactions});
   }
-  async function stopThoughtRealtime(){
-    if(thoughtRealtimeTimer){clearTimeout(thoughtRealtimeTimer);thoughtRealtimeTimer=null}
-    if(thoughtRealtimeChannel&&thoughtRealtimeClient){try{await thoughtRealtimeClient.removeChannel(thoughtRealtimeChannel)}catch(e){}}
-    thoughtRealtimeChannel=null;thoughtRealtimeConnectionId=null;
-  }
-  async function refreshThoughtRealtime(){
-    if(!thoughtRealtimeConnectionId||!currentConnection||currentConnection.id!==thoughtRealtimeConnectionId||document.getElementById('history').hidden)return;
-    if(thoughtRealtimeRefreshing)return;
-    thoughtRealtimeRefreshing=true;
-    try{await loadThoughts();if(typeof markOpened==='function')await markOpened()}catch(e){}finally{thoughtRealtimeRefreshing=false}
-  }
-  function queueThoughtRealtimeRefresh(){
-    if(thoughtRealtimeTimer)clearTimeout(thoughtRealtimeTimer);
-    thoughtRealtimeTimer=setTimeout(refreshThoughtRealtime,90);
-  }
-  async function startThoughtRealtime(){
+
+  async function checkThoughtLive(){
+    if(thoughtLiveBusy||!thoughtLiveConnectionId||!currentConnection||currentConnection.id!==thoughtLiveConnectionId||document.getElementById('history').hidden)return;
     const archived=(typeof relationshipArchiveMode!=='undefined'&&relationshipArchiveMode===true);
-    if(!currentConnection?.id||currentConnection.status==='ended'||archived){await stopThoughtRealtime();return}
-    const id=currentConnection.id;
-    if(thoughtRealtimeChannel&&thoughtRealtimeConnectionId===id)return;
-    await stopThoughtRealtime();
+    if(archived||currentConnection.status==='ended'){stopThoughtLive();return}
+    thoughtLiveBusy=true;
     try{
-      await thoughtRealtimeInit();
-      thoughtRealtimeConnectionId=id;
-      thoughtRealtimeChannel=thoughtRealtimeClient.channel('thought-window-'+id+'-'+Date.now())
-        .on('postgres_changes',{event:'*',schema:'public',table:'thoughts'},queueThoughtRealtimeRefresh)
-        .on('postgres_changes',{event:'*',schema:'public',table:'reactions'},queueThoughtRealtimeRefresh)
-        .subscribe();
-    }catch(e){console.error('Thought realtime unavailable',e)}
+      const sig=await thoughtLiveSnapshot(thoughtLiveConnectionId);
+      if(thoughtLiveSignature===null){thoughtLiveSignature=sig;return}
+      if(sig!==thoughtLiveSignature){
+        thoughtLiveSignature=sig;
+        const y=window.scrollY,doc=document.documentElement,nearBottom=(doc.scrollHeight-(window.innerHeight+y))<140;
+        await loadThoughts();
+        if(typeof markOpened==='function')await markOpened();
+        if(!nearBottom)window.scrollTo(0,y);
+      }
+    }catch(e){}finally{thoughtLiveBusy=false}
   }
-  const oldOpenHistoryRealtime=openHistory;
-  openHistory=async function(c,p){let r=await oldOpenHistoryRealtime(c,p);setTimeout(startThoughtRealtime,0);return r};
-  const backRealtime=document.getElementById('back'),oldBackRealtime=backRealtime.onclick;
-  backRealtime.onclick=async()=>{await stopThoughtRealtime();if(oldBackRealtime)return oldBackRealtime()};
-  const oldScreenRealtime=screen;
-  screen=function(n){stopThoughtRealtime();return oldScreenRealtime(n)};window.screen=screen;
-  window.addEventListener('beforeunload',()=>{try{stopThoughtRealtime()}catch(e){}});
-  if(currentConnection&&!document.getElementById('history').hidden)setTimeout(startThoughtRealtime,0);
+
+  async function startThoughtLive(){
+    const archived=(typeof relationshipArchiveMode!=='undefined'&&relationshipArchiveMode===true);
+    if(!currentConnection?.id||currentConnection.status==='ended'||archived){stopThoughtLive();return}
+    const id=currentConnection.id;
+    if(thoughtLiveTimer&&thoughtLiveConnectionId===id)return;
+    stopThoughtLive();thoughtLiveConnectionId=id;
+    try{thoughtLiveSignature=await thoughtLiveSnapshot(id)}catch(e){thoughtLiveSignature=null}
+    thoughtLiveTimer=setInterval(checkThoughtLive,650);
+  }
+
+  const oldOpenHistoryLive=openHistory;
+  openHistory=async function(c,p){let r=await oldOpenHistoryLive(c,p);setTimeout(startThoughtLive,50);return r};
+
+  const backThoughtLive=document.getElementById('back'),oldBackThoughtLive=backThoughtLive.onclick;
+  backThoughtLive.onclick=()=>{stopThoughtLive();if(oldBackThoughtLive)return oldBackThoughtLive()};
+
+  const oldScreenThoughtLive=screen;
+  screen=function(n){stopThoughtLive();return oldScreenThoughtLive(n)};window.screen=screen;
+
+  window.addEventListener('beforeunload',stopThoughtLive);
+  if(currentConnection&&!document.getElementById('history').hidden)setTimeout(startThoughtLive,50);
   `;
   d.body.appendChild(s);
 }
-host.addEventListener('load',()=>setTimeout(start,1000));setTimeout(start,1000);
+host.addEventListener('load',()=>setTimeout(start,900));setTimeout(start,900);
 })();
