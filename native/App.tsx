@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator } from 'react-native'
+import { ActivityIndicator, AppState, Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import type { Session } from '@supabase/supabase-js'
 
@@ -34,6 +34,19 @@ export default function App() {
   const [profileReady, setProfileReady] = useState<boolean | null>(null)
   const [screen, setScreen] = useState<Screen>({ name: 'home' })
   const [pendingNotification, setPendingNotification] = useState<PendingNotification | null>(null)
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    if (AppState.currentState === 'active') supabase.auth.startAutoRefresh()
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') supabase.auth.startAutoRefresh()
+      else supabase.auth.stopAutoRefresh()
+    })
+    return () => {
+      sub.remove()
+      supabase.auth.stopAutoRefresh()
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setBooting(false) })
