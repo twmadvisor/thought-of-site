@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
+import { Alert, AppState, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import type { Person } from '../api/connections'
 import { getReachOutContact, removePerson, setPersonBlocked } from '../api/relationships'
@@ -8,6 +8,7 @@ import { ThoughtDots } from '../components/ThoughtDots'
 import { ThoughtBubble } from '../components/ThoughtBubble'
 import { EmojiPickerModal } from '../components/EmojiPickerModal'
 import { supabase } from '../lib/supabase'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 const QUICK = ['😌', '🥰', '❤️', '👀', '👋', '👍']
@@ -34,21 +35,33 @@ export function PersonScreen({ session, person, onBack, onRemoved }: { session: 
   const scrollRef = useRef<ScrollView>(null)
   const timestampTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (markOpened = true) => {
     try {
       const nextThoughts = await loadThoughts(person.connectionId)
       const nextReactions = await loadReactions(nextThoughts.map((t) => t.id))
-      setThoughts(nextThoughts); setReactions(nextReactions)
-      await markConnectionOpened(person.connectionId, session.user.id)
-    } catch (e: any) { Alert.alert('Could not load Thoughts', e.message) }
+      setThoughts(nextThoughts)
+      setReactions(nextReactions)
+      if (markOpened && AppState.currentState === 'active') {
+        await markConnectionOpened(person.connectionId, session.user.id)
+      }
+    } catch (e: any) {
+      if (AppState.currentState === 'active') Alert.alert('Could not load Thoughts', e.message)
+    }
   }, [person.connectionId, session.user.id])
 
+  useForegroundRefresh(() => refresh(true))
+
   useEffect(() => {
-    refresh()
+    void refresh(true)
     const tick = setInterval(() => setNow(Date.now()), 500)
+    const onLiveChange = () => {
+      if (AppState.currentState === 'active') void refresh(true)
+    }
+    // Subscribe without a connection filter so DELETE/Rethink events still wake this
+    // conversation even when Postgres only supplies the deleted row's primary key.
     const channel = supabase.channel(`thoughts-${person.connectionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'thoughts', filter: `connection_id=eq.${person.connectionId}` }, () => refresh())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'thoughts' }, onLiveChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, onLiveChange)
       .subscribe()
     return () => {
       clearInterval(tick)
@@ -73,7 +86,7 @@ export function PersonScreen({ session, person, onBack, onRemoved }: { session: 
   async function react(thoughtId: string, emoji: string) {
     try {
       await setReaction(thoughtId, session.user.id, emoji)
-      setReactions(await loadReactions(thoughts.map((t) => t.id)))
+      await refresh(true)
       setEmojiModal(false)
     } catch (e: any) { Alert.alert('Reaction unavailable', e.message) }
   }
@@ -85,14 +98,20 @@ export function PersonScreen({ session, person, onBack, onRemoved }: { session: 
     try {
       const thought = await shareThought(person.connectionId, session.user.id, draft)
       if (thought) setThoughts((old) => old.some((x) => x.id === thought.id) ? old : [...old, thought])
+      // Always reconcile after a local send so any remote Thought that arrived around
+      // the same time is not hidden behind optimistic rendering.
+      await refresh(true)
     } catch (e: any) {
       setText(draft); Alert.alert('Could not share Thought', e.message)
     } finally { setBusy(false) }
   }
 
   async function rethink(thoughtId: string) {
-    try { await rethinkThought(thoughtId); setThoughts((old) => old.filter((t) => t.id !== thoughtId)) }
-    catch (e: any) { Alert.alert('Rethink unavailable', e.message) }
+    try {
+      await rethinkThought(thoughtId)
+      setThoughts((old) => old.filter((t) => t.id !== thoughtId))
+      setReactions((old) => old.filter((r) => r.thought_id !== thoughtId))
+    } catch (e: any) { Alert.alert('Rethink unavailable', e.message) }
   }
 
   async function reachOut() {
