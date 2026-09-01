@@ -2,13 +2,13 @@
   "expo": {
     "name": "thought of",
     "slug": "thought-of",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
-    "icon": "./assets/thought-of-logo.png",
+    "icon": "./assets/thought-of-logo-1024.png",
     "userInterfaceStyle": "light",
     "scheme": "thoughtof",
     "splash": {
-      "image": "./assets/thought-of-logo.png",
+      "image": "./assets/thought-of-logo-1024.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,12 +16,22 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.thoughtof.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
       "package": "com.thoughtof.app"
     },
-    "plugins": ["expo-notifications"]
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow thought of to choose a profile photo."
+        }
+      ]
+    ]
   }
 }
