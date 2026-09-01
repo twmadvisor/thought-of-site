@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { createGroup, deleteGroup, Group, loadGroupState, renameDefaultGroup, updateGroup } from '../api/groups'
 import { loadPeople, Person } from '../api/connections'
 import { Button, Center } from '../components/Common'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 export function GroupsScreen({ session, onBack }: { session: Session; onBack: () => void }) {
@@ -17,8 +18,8 @@ export function GroupsScreen({ session, onBack }: { session: Session; onBack: ()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const refresh = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try {
       const [state, ps] = await Promise.all([loadGroupState(session.user.id), loadPeople(session.user.id)])
       setDefaultName(state.defaultName); setGroups(state.groups); setMemberships(state.memberships); setPeople(ps)
@@ -26,7 +27,8 @@ export function GroupsScreen({ session, onBack }: { session: Session; onBack: ()
     finally { setLoading(false) }
   }, [session.user.id])
 
-  useEffect(() => { refresh() }, [refresh])
+  useForegroundRefresh(() => refresh(false))
+  useEffect(() => { void refresh(true) }, [refresh])
 
   function openEditor(group: Group | 'new') {
     setEditor(group)
@@ -43,7 +45,7 @@ export function GroupsScreen({ session, onBack }: { session: Session; onBack: ()
 
   async function saveDefault() {
     setBusy(true)
-    try { await renameDefaultGroup(session.user.id, defaultName); await refresh() }
+    try { await renameDefaultGroup(session.user.id, defaultName); await refresh(false) }
     catch (e: any) { Alert.alert('Could not rename group', e.message) }
     finally { setBusy(false) }
   }
@@ -54,7 +56,7 @@ export function GroupsScreen({ session, onBack }: { session: Session; onBack: ()
     try {
       if (editor === 'new') await createGroup(session.user.id, groupName, [...selected])
       else await updateGroup(session.user.id, editor.id, groupName, [...selected])
-      setEditor(null); await refresh()
+      setEditor(null); await refresh(false)
     } catch (e: any) { Alert.alert('Could not save group', e.message) }
     finally { setBusy(false) }
   }
@@ -62,7 +64,7 @@ export function GroupsScreen({ session, onBack }: { session: Session; onBack: ()
   function confirmDelete(group: Group) {
     Alert.alert(`Delete ${group.name}?`, 'This deletes only your private group. Thought histories are unchanged.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { try { await deleteGroup(session.user.id, group.id); setEditor(null); await refresh() } catch (e: any) { Alert.alert('Could not delete group', e.message) } } },
+      { text: 'Delete', style: 'destructive', onPress: async () => { try { await deleteGroup(session.user.id, group.id); setEditor(null); await refresh(false) } catch (e: any) { Alert.alert('Could not delete group', e.message) } } },
     ])
   }
 
