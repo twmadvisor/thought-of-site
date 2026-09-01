@@ -2,26 +2,28 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, SafeAreaView, Text, View } from 'react-native'
 import { IncomingRequest, loadIncomingRequests, respondToRequest } from '../api/connections'
 import { Center } from '../components/Common'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 export function RequestsScreen({ onBack }: { onBack: () => void }) {
   const [requests, setRequests] = useState<IncomingRequest[]>([])
   const [loading, setLoading] = useState(true)
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const refresh = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try { setRequests(await loadIncomingRequests()) }
     catch (e: any) { Alert.alert('Could not load requests', e.message) }
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  useForegroundRefresh(() => refresh(false))
+  useEffect(() => { void refresh(true) }, [refresh])
 
   async function respond(item: IncomingRequest, action: 'accept' | 'not_now' | 'block') {
     try {
       await respondToRequest(item.request_id, action)
-      if (action === 'accept') Alert.alert(`${item.requester_name} has been added to your People`)
-      await refresh()
+      if (action === 'accept') Alert.alert(`${item.requester_name} has been added to your People.`)
+      await refresh(false)
     } catch (e: any) {
       Alert.alert('Request unavailable', e.message ?? 'Please try again.')
     }
