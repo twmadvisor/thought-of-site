@@ -4,7 +4,7 @@
     "slug": "thought-of",
     "version": "0.3.0",
     "orientation": "portrait",
-    "icon": "./assets/thought-of-icon-1024.png",
+    "icon": "./assets/thought-of-logo-locked-clean.png",
     "userInterfaceStyle": "light",
     "scheme": "thoughtof",
     "ios": {
