@@ -1,1 +1,1 @@
-Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry with directly encoded canonical PNG.
+Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry after validated canonical blob replacement.
