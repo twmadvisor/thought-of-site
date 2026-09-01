@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import type { Person } from '../api/connections'
+import { getReachOutContact, removePerson, setPersonBlocked } from '../api/relationships'
 import { Reaction, Thought, loadReactions, loadThoughts, markConnectionOpened, rethinkThought, setReaction, shareThought } from '../api/thoughts'
 import { ThoughtDots } from '../components/ThoughtDots'
 import { ThoughtBubble } from '../components/ThoughtBubble'
@@ -21,7 +22,7 @@ function formatThoughtTime(iso: string) {
   return `${d}, ${time}`
 }
 
-export function PersonScreen({ session, person, onBack }: { session: Session; person: Person; onBack: () => void }) {
+export function PersonScreen({ session, person, onBack, onRemoved }: { session: Session; person: Person; onBack: () => void; onRemoved: () => void }) {
   const [thoughts, setThoughts] = useState<Thought[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
   const [text, setText] = useState('')
@@ -83,7 +84,7 @@ export function PersonScreen({ session, person, onBack }: { session: Session; pe
     setText(''); setBusy(true)
     try {
       const thought = await shareThought(person.connectionId, session.user.id, draft)
-      if (thought) setThoughts((old) => [...old, thought])
+      if (thought) setThoughts((old) => old.some((x) => x.id === thought.id) ? old : [...old, thought])
     } catch (e: any) {
       setText(draft); Alert.alert('Could not share Thought', e.message)
     } finally { setBusy(false) }
@@ -92,6 +93,43 @@ export function PersonScreen({ session, person, onBack }: { session: Session; pe
   async function rethink(thoughtId: string) {
     try { await rethinkThought(thoughtId); setThoughts((old) => old.filter((t) => t.id !== thoughtId)) }
     catch (e: any) { Alert.alert('Rethink unavailable', e.message) }
+  }
+
+  async function reachOut() {
+    try {
+      const contact = await getReachOutContact(person.personId)
+      if (!contact?.phone) throw new Error('Reach Out is unavailable for this person.')
+      const buttons: any[] = [
+        { text: 'Text / iMessage', onPress: () => Linking.openURL(`sms:${contact.phone}`) },
+      ]
+      if (contact.whatsapp_enabled) buttons.push({ text: 'WhatsApp', onPress: () => Linking.openURL(`https://wa.me/${contact.phone.replace(/\D/g, '')}`) })
+      buttons.push({ text: 'Cancel', style: 'cancel' })
+      Alert.alert('Reach Out', `Continue the conversation with ${person.privateName || person.name}.`, buttons)
+    } catch (e: any) { Alert.alert('Reach Out', e.message) }
+  }
+
+  function confirmRemove() {
+    const name = person.privateName || person.name
+    Alert.alert(`Remove ${name}?`, 'You will both keep your own private archive of this Thought history for up to one year.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: async () => { try { await removePerson(person.connectionId); onRemoved() } catch (e: any) { Alert.alert('Could not remove person', e.message) } } },
+    ])
+  }
+
+  function confirmBlock() {
+    const name = person.privateName || person.name
+    Alert.alert(`Block ${name}?`, 'They will not be notified. They can still see you normally, but Thoughts and reactions they send while blocked will not reach you.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Block', style: 'destructive', onPress: async () => { try { await setPersonBlocked(person.connectionId, true); onRemoved() } catch (e: any) { Alert.alert('Could not block person', e.message) } } },
+    ])
+  }
+
+  function openOptions() {
+    Alert.alert(person.privateName || person.name, 'Manage this connection.', [
+      { text: 'Remove from People', onPress: confirmRemove },
+      { text: 'Block', style: 'destructive', onPress: confirmBlock },
+      { text: 'Cancel', style: 'cancel' },
+    ])
   }
 
   const activeThought = thoughts.find((t) => t.id === activeThoughtId) ?? null
@@ -104,7 +142,7 @@ export function PersonScreen({ session, person, onBack }: { session: Session; pe
         <View style={styles.header}>
           <Pressable onPress={onBack}><Text style={styles.back}>‹</Text></Pressable>
           <Text style={styles.heading}>{person.privateName || person.name}</Text>
-          <Pressable hitSlop={10}><Text style={styles.menuGlyph}>☰</Text></Pressable>
+          <View style={styles.personHeaderActions}><Pressable style={styles.reachButton} onPress={reachOut}><Text style={styles.reachButtonText}>Reach Out</Text></Pressable><Pressable hitSlop={10} onPress={openOptions}><Text style={styles.menuGlyph}>•••</Text></Pressable></View>
         </View>
         <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={styles.history} keyboardShouldPersistTaps="handled" onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
           {thoughts.map((thought) => {
