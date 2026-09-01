@@ -27,3 +27,8 @@ jobs:
         run: npm run typecheck
       - name: Expo Doctor
         run: npx expo-doctor
+      - name: Bundle iOS app
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://dlaxhooizwxitjxcjyyf.supabase.co
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_cnNOjkZ1yi5uAPdFv8SDJQ_i_HwSAbA
+        run: npx expo export --platform ios --output-dir /tmp/thought-of-ios-export
