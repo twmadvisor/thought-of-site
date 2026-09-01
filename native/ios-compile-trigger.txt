@@ -1,1 +1,1 @@
-Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry with compact clean canonical PNG.
+Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry with macOS sips normalization before Expo prebuild.
