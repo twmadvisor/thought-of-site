@@ -11,9 +11,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.thoughtof.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
