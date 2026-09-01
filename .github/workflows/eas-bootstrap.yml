@@ -18,15 +18,15 @@ jobs:
       run:
         working-directory: native
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: native-app
       - name: Require Expo token
         run: |
           if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
             echo "Add the EXPO_TOKEN repository secret first."
             exit 1
           fi
-      - uses: actions/checkout@v5
-        with:
-          ref: native-app
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
