@@ -7,6 +7,7 @@ import { Button, Center } from '../components/Common'
 import { loadMyProfile, setMyDisplayName, setWhatsAppEnabled, signedAvatar, uploadAvatar } from '../api/profile'
 import { supabase } from '../lib/supabase'
 import { unregisterNativePush } from '../lib/notifications'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 export function AccountScreen({ session, onBack, onGroups, onArchives }: { session: Session; onBack: () => void; onGroups: () => void; onArchives: () => void }) {
@@ -17,8 +18,8 @@ export function AccountScreen({ session, onBack, onGroups, onArchives }: { sessi
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const refresh = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
     try {
       const profile = await loadMyProfile(session.user.id)
       setName(profile.display_name)
@@ -29,7 +30,8 @@ export function AccountScreen({ session, onBack, onGroups, onArchives }: { sessi
     finally { setLoading(false) }
   }, [session.user.id])
 
-  useEffect(() => { refresh() }, [refresh])
+  useForegroundRefresh(() => refresh(false))
+  useEffect(() => { void refresh(true) }, [refresh])
 
   async function saveName() {
     setBusy(true)
@@ -41,7 +43,7 @@ export function AccountScreen({ session, onBack, onGroups, onArchives }: { sessi
   async function choosePhoto() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) return Alert.alert('Photo access is needed to choose a profile photo.')
-    const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.86 })
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.86 })
     if (result.canceled || !result.assets[0]?.uri) return
     setBusy(true)
     try {
