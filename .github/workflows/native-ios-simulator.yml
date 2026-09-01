@@ -1,0 +1,50 @@
+name: Native iOS simulator compile
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [native-app]
+    paths:
+      - 'native/ios-compile-trigger.txt'
+
+jobs:
+  compile:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: native
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: https://dlaxhooizwxitjxcjyyf.supabase.co
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_cnNOjkZ1yi5uAPdFv8SDJQ_i_HwSAbA
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: native-app
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install JavaScript dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate native iOS project
+        run: npx expo prebuild --platform ios --clean --no-install
+      - name: Install CocoaPods
+        run: cd ios && pod install
+      - name: Compile unsigned iOS Simulator release
+        run: |
+          WORKSPACE=$(find ios -maxdepth 2 -name '*.xcworkspace' | head -1)
+          if [ -z "$WORKSPACE" ]; then
+            echo "No Xcode workspace generated."
+            exit 1
+          fi
+          SCHEME=$(xcodebuild -list -json -workspace "$WORKSPACE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["workspace"]["schemes"][0])')
+          echo "Building $SCHEME from $WORKSPACE"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build \
+            -quiet
