@@ -4,12 +4,12 @@ self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('push',event=>{
   let payload={};
   try{payload=event.data?.json()||{}}catch(e){payload={body:event.data?.text()||''}}
-  const title=payload.title||'Thought Of';
+  const title=payload.title||payload.body||'thought of';
   const options={
-    body:payload.body||'',
-    icon:'./logo.png',
+    icon:'./thought-icon.png',
     data:{...(payload.data||{}),url:new URL('thought-profile-ios11.html',self.registration.scope).href}
   };
+  if(payload.body&&payload.body!==title)options.body=payload.body;
   event.waitUntil(self.registration.showNotification(title,options));
 });
 
@@ -22,7 +22,7 @@ self.addEventListener('notificationclick',event=>{
       try{
         const u=new URL(client.url);
         if(u.origin===self.location.origin){
-          if('navigate' in client) await client.navigate(target);
+          if('navigate' in client)await client.navigate(target);
           return client.focus();
         }
       }catch(e){}
