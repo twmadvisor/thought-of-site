@@ -1,1 +1,2 @@
 Trigger EAS project bootstrap after EXPO_TOKEN setup.
+Retry after checkout-order fix.
