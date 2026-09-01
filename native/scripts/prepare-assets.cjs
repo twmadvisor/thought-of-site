@@ -2,7 +2,7 @@ const path = require('path')
 const sharp = require('sharp')
 
 const root = path.resolve(__dirname, '..')
-const source = path.join(root, 'assets', 'thought-of-logo-locked-256.png')
+const source = path.join(root, 'assets', 'thought-of-logo-locked-clean.png')
 const icon = path.join(root, 'assets', 'thought-of-icon-1024.png')
 
 sharp(source)
