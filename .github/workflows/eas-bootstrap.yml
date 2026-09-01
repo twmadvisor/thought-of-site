@@ -1,0 +1,50 @@
+name: Bootstrap EAS project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - name: Require Expo token
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "Add the EXPO_TOKEN repository secret first."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+        with:
+          ref: native-app
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Create or link EAS project
+        run: eas init --force --non-interactive --json
+      - name: Show linked EAS project
+        run: eas project:info
+      - name: Save EAS project ID to native branch
+        working-directory: .
+        run: |
+          if git diff --quiet -- native/app.json; then
+            echo "No config change to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add native/app.json
+          git commit -m "Link native app to EAS project"
+          git push origin HEAD:native-app
