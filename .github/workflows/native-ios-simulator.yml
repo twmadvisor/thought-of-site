@@ -25,6 +25,11 @@ jobs:
           node-version: '22'
       - name: Install JavaScript dependencies
         run: npm install --no-audit --no-fund
+      - name: Normalize locked logo for Apple image tools
+        run: |
+          rm -f assets/thought-of-logo-locked-clean.png
+          sips -s format png assets/thought-of-logo-locked-256.png --out assets/thought-of-logo-locked-clean.png
+          sips -g pixelWidth -g pixelHeight -g format assets/thought-of-logo-locked-clean.png
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --clean --no-install
       - name: Install CocoaPods
