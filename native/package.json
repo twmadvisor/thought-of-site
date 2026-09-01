@@ -4,7 +4,6 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "postinstall": "node scripts/reconstruct-icon.cjs",
     "start": "expo start",
     "ios": "expo start --ios",
     "android": "expo start --android",
