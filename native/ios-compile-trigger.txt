@@ -1,1 +1,1 @@
-Compile the hardened native Thought Of app on an unsigned iOS Simulator target with the verified canonical icon restored.
+Compile the stable hardened native Thought Of app on an unsigned iOS Simulator target before Apple signing.
