@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { styles } from '../theme'
 import { Button } from '../components/Common'
 
-const logo = require('../../assets/thought-of-logo-locked-256.png')
+const logo = require('../../assets/thought-of-logo-locked-clean.png')
 
 export function PhoneAuth() {
   const [step, setStep] = useState<'phone' | 'code'>('phone')
