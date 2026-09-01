@@ -7,11 +7,6 @@
     "icon": "./assets/thought-of-logo-locked-256.png",
     "userInterfaceStyle": "light",
     "scheme": "thoughtof",
-    "splash": {
-      "image": "./assets/thought-of-logo-locked-256.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.thoughtof.app",
