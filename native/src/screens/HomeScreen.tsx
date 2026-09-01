@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, AppState, Linking, Modal, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import { ThoughtDots } from '../components/ThoughtDots'
 import { AvatarCircle } from '../components/AvatarCircle'
@@ -7,6 +7,7 @@ import { Button, Center } from '../components/Common'
 import { IncomingRequest, Person, loadIncomingRequests, loadPeople, requestPerson } from '../api/connections'
 import { GroupState, loadGroupState } from '../api/groups'
 import { supabase } from '../lib/supabase'
+import { useForegroundRefresh } from '../hooks/useForegroundRefresh'
 import { styles } from '../theme'
 
 export function HomeScreen({ session, onOpenPerson, onOpenRequests, onOpenGroups, onOpenAccount }: {
@@ -36,17 +37,18 @@ export function HomeScreen({ session, onOpenPerson, onOpenRequests, onOpenGroups
       setPeople(nextPeople); setIncoming(nextIncoming); setGroups(nextGroups)
       setSelectedGroupId((current) => current && nextGroups.groups.some((g) => g.id === current) ? current : null)
     } catch (e: any) {
-      Alert.alert('Could not load thought of', e.message ?? 'Please try again.')
+      if (AppState.currentState === 'active') Alert.alert('Could not load thought of', e.message ?? 'Please try again.')
     } finally { setLoading(false) }
   }, [session.user.id])
 
+  useForegroundRefresh(() => refresh(false))
+
   useEffect(() => {
-    refresh(true)
+    void refresh(true)
     const channel = supabase.channel(`people-${session.user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'thoughts' }, () => refresh(false))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'connections' }, () => refresh(false))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => refresh(false))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_memberships' }, () => refresh(false))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'thoughts' }, () => {
+        if (AppState.currentState === 'active') void refresh(false)
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [refresh, session.user.id])
@@ -63,9 +65,16 @@ export function HomeScreen({ session, onOpenPerson, onOpenRequests, onOpenGroups
     if (!phone.trim()) return
     setRequesting(true); setRequestMessage('')
     const target = phone.trim()
-    try { await requestPerson(target); setRequestMessage('Request sent.'); setRequestedPhone(target) }
-    catch { setRequestMessage('Request sent.'); setRequestedPhone(target) }
-    finally { setPhone(''); setRequesting(false) }
+    try {
+      await requestPerson(target)
+      setRequestMessage('Request sent.')
+      setRequestedPhone(target)
+      setPhone('')
+    } catch (e: any) {
+      Alert.alert('Could not send request', e?.message ?? 'Please try again.')
+    } finally {
+      setRequesting(false)
+    }
   }
 
   return (
