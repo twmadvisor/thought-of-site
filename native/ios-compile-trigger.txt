@@ -1,1 +1,1 @@
-Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry with clean locked logo binary.
+Compile the hardened native Thought Of app on an unsigned iOS Simulator target. Retry with directly encoded canonical PNG.
