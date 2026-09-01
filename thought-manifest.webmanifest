@@ -1,0 +1,19 @@
+{
+  "id": "/thought-of-site/",
+  "name": "Thought Of",
+  "short_name": "Thought Of",
+  "description": "For the people you think of between conversations.",
+  "start_url": "/thought-of-site/thought-profile-ios11.html",
+  "scope": "/thought-of-site/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/thought-of-site/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
